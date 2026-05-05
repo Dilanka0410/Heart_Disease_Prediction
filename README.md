@@ -119,6 +119,4 @@ This tool is for **educational purposes only** and is not a substitute for profe
 
 ---
 
-## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
