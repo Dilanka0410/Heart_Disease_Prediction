@@ -1,270 +1,551 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pickle
 import numpy as np
 
-st.set_page_config(page_title="Heart Disease Predictor", page_icon="❤️", layout="centered")
+# ─────────────────────────────────────────────────────────────
+# PAGE CONFIG  (must be first Streamlit call)
+# ─────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="CardioSense AI",
+    page_icon="🫀",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
+# ─────────────────────────────────────────────────────────────
+# LOAD MODEL
+# ─────────────────────────────────────────────────────────────
+try:
+    with open("heartdisease.pkl", "rb") as f:
+        model = pickle.load(f)
+except FileNotFoundError:
+    st.error("❌  heartdisease.pkl not found — place it beside app.py")
+    st.stop()
+except Exception as exc:
+    st.error(f"❌  Error loading model: {exc}")
+    st.stop()
+
+# ─────────────────────────────────────────────────────────────
+# GLOBAL CSS
+# ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap');
 
-html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-.stApp { background: #07090f; color: #dde2ef; }
-.block-container { padding: 0 !important; max-width: 100% !important; }
+:root{
+  --bg:#050810; --surface:#0a0d1a; --surface2:#0f1323;
+  --border:rgba(255,255,255,0.07);
+  --red:#e63946; --red-dim:rgba(230,57,70,0.15);
+  --green:#2ecc71; --muted:#6b748f; --text:#e2e8f5;
+}
 
-input[type="number"] {
-    background: #0f1220 !important;
-    border: 1px solid #1d2236 !important;
-    border-radius: 8px !important;
-    color: #e8ecf8 !important;
-    font-family: 'Syne', sans-serif !important;
-    font-size: 1.05rem !important;
-    font-weight: 700 !important;
+html,body,[class*="css"]{
+  font-family:'Outfit',sans-serif;
+  background:var(--bg) !important;
+  color:var(--text);
 }
-.stSelectbox > div > div {
-    background: #0f1220 !important;
-    border: 1px solid #1d2236 !important;
-    border-radius: 8px !important;
-    color: #e8ecf8 !important;
+.stApp{background:var(--bg) !important;}
+.block-container{padding:0 !important; max-width:100% !important;}
+header,footer,#MainMenu{visibility:hidden;}
+
+input[type="number"]{
+  background:var(--surface2) !important;
+  border:1px solid var(--border) !important;
+  border-radius:10px !important;
+  color:var(--text) !important;
+  font-family:'Outfit',sans-serif !important;
+  font-size:15px !important;
+  padding:10px 14px !important;
+  transition:border-color .2s !important;
 }
-label {
-    color: #3d4560 !important;
-    font-size: 9px !important;
-    letter-spacing: 2px !important;
-    text-transform: uppercase !important;
-    font-weight: 600 !important;
+input[type="number"]:focus{
+  border-color:var(--red) !important;
+  box-shadow:0 0 0 3px var(--red-dim) !important;
 }
-.stButton > button {
-    background: #c81e1e !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    height: 3.2em !important;
-    font-family: 'Syne', sans-serif !important;
-    font-size: 1.05rem !important;
-    font-weight: 800 !important;
-    letter-spacing: 0.5px !important;
-    width: 100% !important;
+
+.stSelectbox>div>div{
+  background:var(--surface2) !important;
+  border:1px solid var(--border) !important;
+  border-radius:10px !important;
+  color:var(--text) !important;
+  font-family:'Outfit',sans-serif !important;
 }
-.stButton > button:hover { background: #b91c1c !important; }
-hr { border-color: #1d2236 !important; }
-p { color: #dde2ef; }
+
+label,.stSelectbox label{
+  color:var(--muted) !important;
+  font-size:11px !important;
+  font-weight:600 !important;
+  letter-spacing:1.4px !important;
+  text-transform:uppercase !important;
+}
+
+.stButton>button{
+  background:linear-gradient(135deg,#e63946 0%,#9b1d25 100%) !important;
+  color:white !important;
+  border:none !important;
+  border-radius:12px !important;
+  height:3.4em !important;
+  width:100%;
+  font-size:.95rem !important;
+  font-weight:700 !important;
+  font-family:'Outfit',sans-serif !important;
+  letter-spacing:.5px !important;
+  transition:all .25s ease !important;
+  box-shadow:0 4px 20px rgba(230,57,70,.25) !important;
+}
+.stButton>button:hover{
+  transform:translateY(-2px) !important;
+  box-shadow:0 10px 32px rgba(230,57,70,.45) !important;
+}
+.stButton>button:active{transform:translateY(0) !important;}
+
+.stSpinner>div{border-top-color:var(--red) !important;}
+.stAlert{border-radius:10px !important;}
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:#1e2438;border-radius:3px;}
+
+.section-label{
+  color:var(--red);
+  letter-spacing:2.5px;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;margin-bottom:18px;
+  display:flex;align-items:center;gap:8px;
+}
+.section-label::before{
+  content:'';display:inline-block;
+  width:18px;height:2px;background:var(--red);border-radius:2px;
+}
+
+.cs-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:22px;margin-bottom:16px;
+}
+.cs-card-title{
+  color:var(--red);font-size:10.5px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;
+}
+
+.metric-pill{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:10px 14px;
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:8px;font-size:13px;
+}
+.mp-label{color:var(--muted);}
+.mp-value{color:var(--text);font-weight:600;}
+
+.rec-item{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:10px;padding:12px 16px;margin-bottom:8px;
+  font-size:13.5px;color:#c5cde3;
+  display:flex;align-items:center;gap:10px;
+  transition:border-color .2s;
+}
+.rec-item:hover{border-color:rgba(230,57,70,.4);}
+
+.cs-divider{height:1px;background:var(--border);margin:24px 0;}
 </style>
 """, unsafe_allow_html=True)
 
-# ── HERO ──────────────────────────────────────────────────────────────────────
-st.markdown("""
+# ─────────────────────────────────────────────────────────────
+# HERO — rendered via components.html to bypass Streamlit's
+#        HTML sanitiser (which strips comments & some styles)
+# ─────────────────────────────────────────────────────────────
+HERO = """<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-@keyframes pulse-dot  { 0%,100%{transform:scale(1);opacity:1}  50%{transform:scale(1.5);opacity:0.5} }
-@keyframes heartbeat  { 0%,100%{transform:scale(1)}            50%{transform:scale(1.08)} }
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Outfit',sans-serif;
+  background:linear-gradient(135deg,#05070f 0%,#0c0f1e 55%,#0a0c18 100%);
+  padding:3rem 3.5rem 2.5rem;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  position:relative;overflow:hidden;
+  min-height:260px;
+}
+.blob{
+  position:absolute;
+  border-radius:50%;
+  pointer-events:none;
+}
+.blob1{
+  top:-70px;left:-70px;width:360px;height:360px;
+  background:radial-gradient(circle,rgba(230,57,70,.15) 0%,transparent 70%);
+}
+.blob2{
+  top:0;right:-50px;width:240px;height:240px;
+  background:radial-gradient(circle,rgba(230,57,70,.08) 0%,transparent 70%);
+}
+.badge{display:flex;align-items:center;gap:10px;margin-bottom:22px;position:relative;}
+.dot{
+  width:8px;height:8px;flex-shrink:0;
+  background:#e63946;border-radius:50%;
+  animation:cspulse 2s ease-in-out infinite;
+}
+@keyframes cspulse{
+  0%,100%{box-shadow:0 0 6px #e63946;}
+  50%{box-shadow:0 0 20px #e63946,0 0 40px rgba(230,57,70,.3);}
+}
+.badge-txt{
+  font-size:10px;letter-spacing:3.5px;font-weight:700;
+  color:#e63946;text-transform:uppercase;
+}
+.title{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(2rem,4vw,3.2rem);
+  font-weight:900;line-height:1.06;color:#fff;
+  margin-bottom:14px;position:relative;
+}
+.accent{
+  background:linear-gradient(90deg,#e63946 0%,#ff7070 100%);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.subtitle{
+  color:#5a6484;font-size:14px;line-height:1.65;
+  max-width:520px;position:relative;
+}
+.dim{color:#3a4060;}
+.stats{
+  display:flex;gap:36px;
+  margin-top:28px;padding-top:24px;
+  border-top:1px solid rgba(255,255,255,.06);
+  position:relative;
+}
+.snum{
+  font-family:'Playfair Display',serif;
+  font-size:22px;font-weight:700;color:#fff;
+}
+.snum.red{color:#e63946;}
+.slbl{
+  font-size:10.5px;color:#3d4460;
+  letter-spacing:1px;text-transform:uppercase;margin-top:3px;
+}
 </style>
+</head>
+<body>
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
 
-<div style="position:relative;overflow:hidden;height:260px;display:flex;align-items:center;
-            justify-content:center;flex-direction:column;background:#07090f;">
-
-  <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.06"
-       viewBox="0 0 680 260" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-        <path d="M30 0L0 0 0 30" fill="none" stroke="#ef4444" stroke-width="0.5"/>
-      </pattern>
-    </defs>
-    <rect width="680" height="260" fill="url(#grid)"/>
-  </svg>
-
-  <div style="position:absolute;right:60px;top:50%;transform:translateY(-50%);opacity:0.18">
-    <svg width="130" height="120" viewBox="0 0 130 120" xmlns="http://www.w3.org/2000/svg"
-         style="animation:heartbeat 0.9s ease-in-out infinite">
-      <path d="M65 105 C65 105 10 65 10 35 C10 18 22 8 38 8 C50 8 60 16 65 24
-               C70 16 80 8 92 8 C108 8 120 18 120 35 C120 65 65 105 65 105Z" fill="#ef4444"/>
-      <path d="M38 40 L50 40 L56 28 L62 54 L68 34 L74 44 L80 44 L86 40 L92 40"
-            fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round" opacity="0.5"/>
-    </svg>
+  <div class="badge">
+    <div class="dot"></div>
+    <span class="badge-txt">CardioSense AI &nbsp;&#8226;&nbsp; Clinical Decision Support</span>
   </div>
 
-  <div style="position:absolute;left:50px;top:50%;transform:translateY(-50%);opacity:0.08">
-    <svg width="90" height="80" viewBox="0 0 130 120" xmlns="http://www.w3.org/2000/svg">
-      <path d="M65 105 C65 105 10 65 10 35 C10 18 22 8 38 8 C50 8 60 16 65 24
-               C70 16 80 8 92 8 C108 8 120 18 120 35 C120 65 65 105 65 105Z" fill="#ef4444"/>
-    </svg>
+  <div class="title">
+    Heart Disease<br>
+    <span class="accent">Risk Predictor</span>
   </div>
 
-  <div style="position:relative;z-index:2;text-align:center">
-    <div style="display:inline-flex;align-items:center;gap:7px;border:1px solid #3a1a1a;
-                background:#1a0808;border-radius:30px;padding:5px 14px;margin-bottom:14px">
-      <div style="width:6px;height:6px;border-radius:50%;background:#ef4444;
-                  animation:pulse-dot 1.2s ease-in-out infinite"></div>
-      <span style="font-size:10px;letter-spacing:2.5px;color:#ef4444;font-weight:600">
-        CARDIAC RISK MONITOR
-      </span>
+  <div class="subtitle">
+    AI-powered 10-year cardiovascular risk assessment using 14 clinical biomarkers.
+    <span class="dim"> Not a substitute for professional medical advice.</span>
+  </div>
+
+  <div class="stats">
+    <div>
+      <div class="snum">14</div>
+      <div class="slbl">Biomarkers</div>
     </div>
-    <h1 style="font-family:Syne,sans-serif;font-size:2.2rem;font-weight:800;color:#fff;
-               letter-spacing:-1px;line-height:1.1">
-      Heart Disease <span style="color:#ef4444">Predictor</span>
-    </h1>
-    <p style="font-size:12px;color:#4b5675;margin-top:6px;letter-spacing:1px">
-      10-Year Cardiovascular Risk · Powered by ML
-    </p>
+    <div>
+      <div class="snum">10yr</div>
+      <div class="slbl">Prediction Window</div>
+    </div>
+    <div>
+      <div class="snum red">ML</div>
+      <div class="slbl">Powered</div>
+    </div>
+  </div>
+</body>
+</html>"""
+
+components.html(HERO, height=285, scrolling=False)
+
+# ─────────────────────────────────────────────────────────────
+# MAIN LAYOUT
+# ─────────────────────────────────────────────────────────────
+left_col, right_col = st.columns([3, 2], gap="small")
+
+# ══════════════════════════════════════════════════════════════
+# LEFT — FORM
+# ══════════════════════════════════════════════════════════════
+with left_col:
+    st.markdown("<div style='padding:1.5rem 2.5rem;'>", unsafe_allow_html=True)
+
+    st.markdown('<div class="section-label">Personal Information</div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        age = st.number_input("Age (yrs)", min_value=1, max_value=120, value=30)
+    with c2:
+        BMI = st.number_input("BMI", min_value=10.0, max_value=60.0, value=24.0, step=0.1)
+    with c3:
+        sex = st.selectbox("Biological Sex", ["Male", "Female"])
+
+    st.markdown('<div class="cs-divider"></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-label">Vital Signs</div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        totChol   = st.number_input("Total Cholesterol", min_value=100, max_value=700, value=180)
+        sysBP     = st.number_input("Systolic BP (mmHg)", min_value=70, max_value=300, value=120)
+    with c2:
+        glucose   = st.number_input("Glucose (mg/dL)", min_value=40, max_value=500, value=90)
+        diaBP     = st.number_input("Diastolic BP (mmHg)", min_value=40, max_value=200, value=80)
+    with c3:
+        heartRate  = st.number_input("Heart Rate (bpm)", min_value=40, max_value=220, value=72)
+        cigsPerDay = st.number_input("Cigarettes / Day", min_value=0, max_value=100, value=0)
+
+    st.markdown('<div class="cs-divider"></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="section-label">Medical History</div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        currentSmoker   = st.selectbox("Current Smoker", ["No", "Yes"])
+        BPMeds          = st.selectbox("BP Medications", ["No", "Yes"])
+    with c2:
+        prevalentHyp    = st.selectbox("Hypertension", ["No", "Yes"])
+        prevalentStroke = st.selectbox("Prior Stroke", ["No", "Yes"])
+    with c3:
+        diabetes = st.selectbox("Diabetes", ["No", "Yes"])
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    predict_btn = st.button("🫀  Run Cardiac Risk Analysis", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════
+# RIGHT — PANEL
+# ══════════════════════════════════════════════════════════════
+with right_col:
+    st.markdown("<div style='padding:1.5rem 2rem 2rem 1rem;'>", unsafe_allow_html=True)
+
+    # Medical images via components.html
+    IMGS = """<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:transparent;font-family:'Outfit',sans-serif;}
+.strip{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.wrap{position:relative;border-radius:12px;overflow:hidden;height:155px;cursor:pointer;}
+.wrap img{
+  width:100%;height:100%;object-fit:cover;display:block;
+  filter:saturate(.75) brightness(.7);
+  transition:filter .45s ease,transform .45s ease;
+}
+.wrap:hover img{filter:saturate(1.05) brightness(.9);transform:scale(1.05);}
+.cap{
+  position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(to top,rgba(3,5,14,.9) 0%,transparent 100%);
+  padding:8px 12px 10px;
+  font-size:9.5px;font-weight:700;color:#7a88ae;
+  letter-spacing:1.3px;text-transform:uppercase;
+}
+.wrap::after{
+  content:'';position:absolute;inset:0;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.07);pointer-events:none;
+}
+</style>
+</head><body>
+<div class="strip">
+  <div class="wrap">
+    <img src="https://images.onlymyhealth.com/imported/images/2022/September/23_Sep_2022/inside1heartdisease.jpg"
+         alt="Coronary anatomy"
+         onerror="this.parentElement.style.background='#0a0d1a'">
+    <div class="cap">Coronary Anatomy</div>
+  </div>
+  <div class="wrap">
+    <img src="https://www.health365.sg/wp-content/uploads/2022/09/What-is-Ischemic-heart-disease.jpg"
+         alt="Ischemic heart disease"
+         onerror="this.parentElement.style.background='#0a0d1a'">
+    <div class="cap">Ischemic Disease</div>
   </div>
 </div>
+</body></html>"""
 
-<svg width="100%" height="50" viewBox="0 0 680 50" xmlns="http://www.w3.org/2000/svg"
-     preserveAspectRatio="none" style="display:block;margin-bottom:8px">
-  <polyline fill="none" stroke="#ef4444" stroke-width="1.8"
-            stroke-linecap="round" stroke-linejoin="round"
-            points="0,25 40,25 55,25 63,6 70,44 77,25 95,25
-                    125,25 133,25 141,6 148,44 155,25 173,25
-                    203,25 211,25 219,6 226,44 233,25 251,25
-                    300,25 308,25 316,6 323,44 330,25 348,25
-                    400,25 408,25 416,6 423,44 430,25 448,25
-                    500,25 508,25 516,6 523,44 530,25 548,25
-                    600,25 608,25 616,6 623,44 630,25 648,25 680,25"/>
-</svg>
-""", unsafe_allow_html=True)
+    components.html(IMGS, height=168, scrolling=False)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-# ── LOAD MODEL ────────────────────────────────────────────────────────────────
-model = pickle.load(open("heartdisease.pkl", "rb"))
+    # About card
+    st.markdown("""
+    <div class="cs-card">
+      <div class="cs-card-title">About This Assessment</div>
+      <div style="color:#6b748f;line-height:1.8;font-size:13px;">
+        This model analyzes
+        <span style="color:#c5cde3;font-weight:600;">14 cardiovascular indicators</span>
+        to estimate the probability of developing heart disease within the next
+        <span style="color:#c5cde3;font-weight:600;">10 years</span>.
+        Based on the Framingham Heart Study methodology.
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ── WRAPPER ───────────────────────────────────────────────────────────────────
-st.markdown('<div style="padding:0 1.5rem 2rem">', unsafe_allow_html=True)
+    # Healthy ranges card
+    st.markdown("""
+    <div class="cs-card">
+      <div class="cs-card-title">Healthy Reference Ranges</div>
+      <div class="metric-pill">
+        <span class="mp-label">🩺 Blood Pressure</span>
+        <span class="mp-value">&lt; 120/80 mmHg</span>
+      </div>
+      <div class="metric-pill">
+        <span class="mp-label">🧪 Total Cholesterol</span>
+        <span class="mp-value">&lt; 200 mg/dL</span>
+      </div>
+      <div class="metric-pill">
+        <span class="mp-label">🍬 Fasting Glucose</span>
+        <span class="mp-value">70 – 99 mg/dL</span>
+      </div>
+      <div class="metric-pill" style="margin-bottom:0">
+        <span class="mp-label">⚖️ BMI</span>
+        <span class="mp-value">18.5 – 24.9</span>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ── SECTION HEADER HELPER ─────────────────────────────────────────────────────
-def section(label):
-    st.markdown(
-        '<div style="display:flex;align-items:center;gap:10px;margin:1.2rem 0 0.8rem">'
-        '<span style="font-size:9px;letter-spacing:3px;color:#ef4444;font-weight:700">' + label + '</span>'
-        '<div style="flex:1;height:1px;background:linear-gradient(to right,#3a1010,transparent)"></div>'
-        '</div>',
-        unsafe_allow_html=True
-    )
+    # ─────────────────────────────────────────────
+    # PREDICTION
+    # ─────────────────────────────────────────────
+    if predict_btn:
 
-# ── PERSONAL ──────────────────────────────────────────────────────────────────
-section("PERSONAL")
-c1, c2, c3 = st.columns(3)
-with c1: age = st.number_input("Age")
-with c2: BMI = st.number_input("BMI")
-with c3: sex = st.selectbox("Sex", ["Male", "Female"])
+        sex_v             = 1 if sex == "Male" else 0
+        currentSmoker_v   = 1 if currentSmoker == "Yes" else 0
+        BPMeds_v          = 1 if BPMeds == "Yes" else 0
+        prevalentStroke_v = 1 if prevalentStroke == "Yes" else 0
+        prevalentHyp_v    = 1 if prevalentHyp == "Yes" else 0
+        diabetes_v        = 1 if diabetes == "Yes" else 0
 
-# ── VITALS ────────────────────────────────────────────────────────────────────
-section("VITALS")
-c1, c2, c3 = st.columns(3)
-with c1:
-    totChol = st.number_input("Cholesterol")
-    sysBP   = st.number_input("Systolic BP")
-with c2:
-    glucose = st.number_input("Glucose")
-    diaBP   = st.number_input("Diastolic BP")
-with c3:
-    heartRate  = st.number_input("Heart Rate")
-    cigsPerDay = st.number_input("Cigs / Day")
+        input_data = np.array([[
+            age, cigsPerDay, totChol, sysBP, diaBP,
+            BMI, heartRate, glucose,
+            sex_v, currentSmoker_v, BPMeds_v,
+            prevalentStroke_v, prevalentHyp_v, diabetes_v,
+        ]])
 
-# ── MEDICAL HISTORY ───────────────────────────────────────────────────────────
-section("MEDICAL HISTORY")
-c1, c2, c3 = st.columns(3)
-with c1:
-    currentSmoker   = st.selectbox("Current Smoker",  ["No", "Yes"])
-    BPMeds          = st.selectbox("BP Medications",   ["No", "Yes"])
-with c2:
-    prevalentHyp    = st.selectbox("Hypertension",     ["No", "Yes"])
-    prevalentStroke = st.selectbox("Stroke History",   ["No", "Yes"])
-with c3:
-    diabetes        = st.selectbox("Diabetes",         ["No", "Yes"])
+        with st.spinner("Analyzing cardiac profile…"):
+            try:
+                prediction = model.predict(input_data)[0]
+                probability = (
+                    model.predict_proba(input_data)[0][1] * 100
+                    if hasattr(model, "predict_proba")
+                    else (75 if prediction == 1 else 20)
+                )
 
-# ── ENCODE ────────────────────────────────────────────────────────────────────
-sex_v             = 1 if sex             == "Male" else 0
-currentSmoker_v   = 1 if currentSmoker   == "Yes"  else 0
-BPMeds_v          = 1 if BPMeds          == "Yes"  else 0
-prevalentStroke_v = 1 if prevalentStroke == "Yes"  else 0
-prevalentHyp_v    = 1 if prevalentHyp    == "Yes"  else 0
-diabetes_v        = 1 if diabetes        == "Yes"  else 0
+                high  = prediction == 1
+                color = "#e63946" if high else "#2ecc71"
+                title = "Elevated Risk Detected" if high else "Low Risk Profile"
+                icon  = "26A0" if high else "2705"   # hex codepoints
+                icon_char = "⚠️" if high else "✅"
 
-input_data = np.array([[age, cigsPerDay, totChol, sysBP, diaBP,
-                        BMI, heartRate, glucose,
-                        sex_v, currentSmoker_v, BPMeds_v,
-                        prevalentStroke_v, prevalentHyp_v, diabetes_v]])
+                risk_label = (
+                    "HIGH"   if probability >= 60 else
+                    "MEDIUM" if probability >= 30 else
+                    "LOW"
+                )
 
-st.write("")
+                recommendations = (
+                    [
+                        ("🏥", "Consult a cardiologist immediately"),
+                        ("🧂", "Reduce sodium and saturated fat intake"),
+                        ("🚭", "Quit smoking — seek cessation support"),
+                        ("🏃", "30 min moderate exercise, 5×/week"),
+                        ("📊", "Monitor blood pressure daily"),
+                    ] if high else [
+                        ("🥗", "Maintain a heart-healthy diet"),
+                        ("📅", "Continue annual health screenings"),
+                        ("🏃", "Stay physically active"),
+                        ("😴", "Prioritize 7–8 hours of sleep"),
+                        ("🚭", "Avoid smoking and limit alcohol"),
+                    ]
+                )
 
-# ── PREDICT ───────────────────────────────────────────────────────────────────
-if st.button("❤️  Predict My Risk", use_container_width=True):
-    result = model.predict(input_data)
-    high   = result[0] == 1
+                # Result card via components.html
+                result_html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box;}}
+body{{font-family:'Outfit',sans-serif;background:transparent;color:#e2e8f5;}}
+.rc{{
+  background:linear-gradient(135deg,#0a0d1a,#0f1323);
+  border:1px solid {color}40;
+  border-radius:18px;padding:22px;
+  position:relative;overflow:hidden;
+}}
+.glow{{
+  position:absolute;top:0;right:0;width:200px;height:200px;
+  background:radial-gradient(circle at top right,{color}18,transparent 65%);
+  pointer-events:none;
+}}
+.top{{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}}
+.badge-box{{
+  background:{color}1a;border:1px solid {color}50;
+  border-radius:10px;padding:8px 16px;text-align:center;flex-shrink:0;
+}}
+.badge-lbl{{font-size:9.5px;color:{color};font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;}}
+.badge-val{{font-size:19px;font-weight:800;color:{color};font-family:'Playfair Display',serif;}}
+.eyebrow{{color:{color};font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:8px;}}
+.rtitle{{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:#fff;line-height:1.2;}}
+.sub{{color:#6b748f;font-size:10.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px;margin-top:14px;}}
+.gauge{{height:12px;background:#111624;border-radius:30px;overflow:hidden;margin:8px 0;}}
+.gbar{{height:100%;border-radius:30px;background:linear-gradient(90deg,{color}88,{color});width:{probability:.1f}%;position:relative;}}
+.gbar::after{{content:'';position:absolute;right:0;top:0;bottom:0;width:18px;background:rgba(255,255,255,.2);border-radius:0 30px 30px 0;}}
+.prow{{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}}
+.pct{{font-family:'Playfair Display',serif;font-size:30px;font-weight:900;color:{color};}}
+.note{{color:#3a4060;font-size:11.5px;text-align:right;line-height:1.5;}}
+</style>
+</head><body>
+<div class="rc">
+  <div class="glow"></div>
+  <div class="top">
+    <div>
+      <div class="eyebrow">{icon_char} &nbsp;Prediction Result</div>
+      <div class="rtitle">{title}</div>
+    </div>
+    <div class="badge-box">
+      <div class="badge-lbl">Risk</div>
+      <div class="badge-val">{risk_label}</div>
+    </div>
+  </div>
+  <div class="sub">Estimated 10-Year Risk</div>
+  <div class="gauge"><div class="gbar"></div></div>
+  <div class="prow">
+    <div class="pct">{probability:.1f}%</div>
+    <div class="note">of developing CHD<br>within 10 years</div>
+  </div>
+</div>
+</body></html>"""
 
-    color       = "#ef4444" if high else "#22c55e"
-    bg          = "#0f0505" if high else "#050f08"
-    border_col  = "#5a1515" if high else "#145228"
-    title       = "High Risk Detected" if high else "Low Risk — Keep It Up"
-    msg         = (
-        "Your profile shows elevated cardiovascular risk. Please consult a cardiologist, "
-        "reduce smoking, follow a heart-healthy diet, and monitor your blood pressure regularly."
-        if high else
-        "Your cardiovascular profile looks healthy. Maintain regular exercise, a balanced diet, "
-        "and schedule routine check-ups to keep your heart strong."
-    )
-    heart_path  = "M30 58 L48 58 L56 38 L65 76 L72 46 L80 60 L98 60" if high else "M42 60 L58 76 L88 44"
-    risk_width  = "78%" if high else "22%"
-    risk_label  = "HIGH" if high else "LOW"
+                components.html(result_html, height=210, scrolling=False)
 
-    html = (
-        '<div style="border-radius:14px;overflow:hidden;margin-top:1rem">'
-          '<div style="padding:1.6rem 1.4rem;text-align:center;'
-               'background:' + bg + ';border:1px solid ' + border_col + ';border-radius:14px">'
+                # Recommendations heading
+                st.markdown(
+                    f'<div style="color:{color};letter-spacing:2px;font-size:10.5px;'
+                    f'font-weight:700;text-transform:uppercase;margin:16px 0 10px;">'
+                    f'── Recommendations</div>',
+                    unsafe_allow_html=True,
+                )
 
-            '<div style="margin:0 auto 14px;width:90px;height:84px;'
-                 'display:flex;align-items:center;justify-content:center">'
-              '<svg width="90" height="84" viewBox="0 0 130 120" xmlns="http://www.w3.org/2000/svg">'
-                '<path d="M65 105 C65 105 10 65 10 35 C10 18 22 8 38 8 C50 8 60 16 65 24 '
-                      'C70 16 80 8 92 8 C108 8 120 18 120 35 C120 65 65 105 65 105Z" fill="' + color + '"/>'
-                '<path d="' + heart_path + '" fill="none" stroke="#fff" '
-                      'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
-              '</svg>'
-            '</div>'
+                for emoji, rec in recommendations:
+                    st.markdown(
+                        f'<div class="rec-item">'
+                        f'<span style="font-size:15px;flex-shrink:0;">{emoji}</span>'
+                        f'<span>{rec}</span></div>',
+                        unsafe_allow_html=True,
+                    )
 
-            '<div style="font-family:Syne,sans-serif;font-size:1.3rem;font-weight:800;'
-                 'color:' + color + ';margin-bottom:8px">' + title + '</div>'
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.warning(
+                    "⚕️ AI prediction only — not a medical diagnosis. "
+                    "Always consult a qualified healthcare professional."
+                )
 
-            '<p style="font-size:12px;color:#6b7a99;line-height:1.7;'
-               'max-width:360px;margin:0 auto">' + msg + '</p>'
+            except Exception as exc:
+                st.error(f"Prediction error: {exc}")
 
-            '<div style="margin:1.2rem auto 0;max-width:300px">'
-              '<div style="display:flex;justify-content:space-between;font-size:10px;'
-                   'color:#3d4560;margin-bottom:4px;letter-spacing:1px">'
-                '<span>Risk Level</span>'
-                '<span style="color:' + color + ';font-weight:700">' + risk_label + '</span>'
-              '</div>'
-              '<div style="height:4px;border-radius:2px;background:#1d2236;overflow:hidden">'
-                '<div style="height:100%;border-radius:2px;background:' + color + ';width:' + risk_width + '"></div>'
-              '</div>'
-            '</div>'
-
-            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:1rem">'
-
-              '<div style="background:#0f1220;border:1px solid #1d2236;border-radius:8px;'
-                   'padding:8px 10px;text-align:center">'
-                '<div style="font-size:1rem;font-weight:700;color:' + color + '">' + risk_label + '</div>'
-                '<div style="font-size:9px;color:#3d4560;letter-spacing:1.5px;margin-top:2px">RISK</div>'
-              '</div>'
-
-              '<div style="background:#0f1220;border:1px solid #1d2236;border-radius:8px;'
-                   'padding:8px 10px;text-align:center">'
-                '<div style="font-size:1rem;font-weight:700;color:#e8ecf8">'
-                  + str(int(sysBP)) + '/' + str(int(diaBP)) +
-                '</div>'
-                '<div style="font-size:9px;color:#3d4560;letter-spacing:1.5px;margin-top:2px">BLOOD PRESSURE</div>'
-              '</div>'
-
-              '<div style="background:#0f1220;border:1px solid #1d2236;border-radius:8px;'
-                   'padding:8px 10px;text-align:center">'
-                '<div style="font-size:1rem;font-weight:700;color:#e8ecf8">' + str(int(totChol)) + '</div>'
-                '<div style="font-size:9px;color:#3d4560;letter-spacing:1.5px;margin-top:2px">CHOLESTEROL</div>'
-              '</div>'
-
-            '</div>'
-          '</div>'
-        '</div>'
-    )
-
-    st.markdown(html, unsafe_allow_html=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
